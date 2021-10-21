@@ -29,12 +29,12 @@ def set_permissions(our_viewset):
     '''
     result = [ReadOnly()]
     try:
-        tmp = our_viewset.need_to_add_perm
-        if isinstance(tmp, tuple):
-            result = [permission() for permission in tmp]
+        add_permissions = our_viewset.need_to_add_perm
+        if isinstance(add_permissions, tuple):
+            result = [permission() for permission in add_permissions]
         else:
             raise TypeError('need_to_add_perm должен быть кортежем')
         result += super(our_viewset.__class__, our_viewset).get_permissions()
     except Exception as error:
-        print(error)
+        raise error
     return result
