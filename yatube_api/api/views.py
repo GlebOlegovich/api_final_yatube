@@ -2,19 +2,30 @@ from rest_framework import filters, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 
-from api.permissions import IsOwnerOrReadOnly, ReadOnly
-from posts.models import Group, Post, User
+from api.permissions import IsAuthorOrReadOnly, ReadOnly
+from posts.models import Group, Post
 
 from .serializers import (CommentSerializer, FollowSerializer, GroupSerializer,
                           PostSerializer)
 from .viewsets import CreateDeleteReadViewSet
-from .mixins import AddToDefaultPermissonsMixin
+
+# from .mixins import AddToDefaultPermissonsMixin
 
 
-class PostViewSet(viewsets.ModelViewSet):
+# Тут добавляем наш миксин на пермишены слева, потому что идет справа налево
+# _________________________________________________________________________
+# Прошу разрешить оставить эти закоменченные строке, намучался с этим...
+# Вдруг мы захоти сделать, что ыб посты видели толь авторизованные юзеры -
+# Тогда просто разкоментим и вуаля)
+# _________________________________________________________________________
+class PostViewSet(
+    # AddToDefaultPermissonsMixin,
+    viewsets.ModelViewSet
+):
     queryset = Post.objects.all()
+    # need_to_add_perm = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthorOrReadOnly,)
     serializer_class = PostSerializer
-    permission_classes = (IsOwnerOrReadOnly,)
     pagination_class = LimitOffsetPagination
 
     def perform_create(self, serializer):
@@ -27,8 +38,7 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (ReadOnly,)
 
 
-class FollowViewSet(CreateDeleteReadViewSet, AddToDefaultPermissonsMixin):
-    need_to_add_perm = (IsOwnerOrReadOnly,)
+class FollowViewSet(CreateDeleteReadViewSet):
     serializer_class = FollowSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username',)
@@ -37,13 +47,13 @@ class FollowViewSet(CreateDeleteReadViewSet, AddToDefaultPermissonsMixin):
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
-        user = get_object_or_404(User, username=self.request.user.username)
+        user = self.request.user
         return user.follower.all()
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    permission_classes = (IsOwnerOrReadOnly,)
+    permission_classes = (IsAuthorOrReadOnly,)
 
     def _get_post(self):
         return get_object_or_404(Post, pk=self.kwargs.get('post_id'))
